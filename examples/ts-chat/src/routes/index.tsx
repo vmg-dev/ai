@@ -327,7 +327,7 @@ function ChatPage() {
     addToolApprovalResponse,
   } = useChat({
     connection: {
-      async *connect(msgs, data) {
+      async *connect(msgs, data, abortSignal) {
         // For test endpoint, send UIMessages directly (preserve parts for approval extraction)
         // For real endpoint, convert to ModelMessages
         const body =
@@ -343,6 +343,7 @@ function ChatPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
+          signal: abortSignal,
         });
 
         if (!response.ok || !response.body) {
@@ -354,6 +355,11 @@ function ChatPage() {
         let buffer = "";
 
         while (true) {
+          // Check if aborted before reading
+          if (abortSignal?.aborted) {
+            break;
+          }
+
           const { done, value } = await reader.read();
           if (done) break;
 
@@ -374,7 +380,6 @@ function ChatPage() {
           }
         }
       },
-      abort: () => {},
     },
     onChunk: (chunk: any) => {
       setChunks((prev) => [...prev, chunk]);

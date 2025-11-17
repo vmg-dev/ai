@@ -17,6 +17,7 @@ export class ChatClient {
     chunkStrategy?: ChunkStrategy;
     parser?: StreamParser;
   };
+  private abortController: AbortController | null = null;
 
   private callbacks: {
     onResponse: (response?: Response) => void | Promise<void>;
@@ -449,6 +450,9 @@ export class ChatClient {
     this.setIsLoading(true);
     this.setError(undefined);
 
+    // Create abort controller for this request
+    this.abortController = new AbortController();
+
     try {
       // Convert UIMessages to ModelMessages for connection adapter
       const modelMessages: ModelMessage[] = [];
@@ -459,8 +463,8 @@ export class ChatClient {
       // Call onResponse callback (no Response object for non-fetch adapters)
       await this.callbacks.onResponse();
 
-      // Connect and get stream from connection adapter
-      const stream = this.connection.connect(modelMessages, this.body);
+      // Connect and get stream from connection adapter, passing abort signal
+      const stream = this.connection.connect(modelMessages, this.body, this.abortController.signal);
 
       // Process the stream
       const assistantMessage = await this.processStream(stream);
@@ -478,6 +482,7 @@ export class ChatClient {
         this.callbacks.onError(err);
       }
     } finally {
+      this.abortController = null;
       this.setIsLoading(false);
     }
   }
@@ -535,8 +540,9 @@ export class ChatClient {
   }
 
   stop(): void {
-    if (this.connection.abort) {
-      this.connection.abort();
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
     }
     this.setIsLoading(false);
 
@@ -668,18 +674,32 @@ export class ChatClient {
   private async continueFlow(): Promise<void> {
     if (this.isLoading) return;
 
+    // Create abort controller for this request
+    this.abortController = new AbortController();
+
     try {
       this.setIsLoading(true);
       this.setError(undefined);
 
-      // Process the current conversation state
+      // Convert UIMessages to ModelMessages for connection adapter
+      const modelMessages: ModelMessage[] = [];
+      for (const msg of this.messages) {
+        modelMessages.push(...uiMessageToModelMessages(msg));
+      }
+
+      // Process the current conversation state, passing abort signal
       await this.processStream(
-        this.connection.connect(this.messages, this.body)
+        this.connection.connect(modelMessages, this.body, this.abortController.signal)
       );
     } catch (err: any) {
+      if (err instanceof Error && err.name === "AbortError") {
+        // Request was aborted, ignore
+        return;
+      }
       this.setError(err);
       this.callbacks.onError(err);
     } finally {
+      this.abortController = null;
       this.setIsLoading(false);
     }
   }

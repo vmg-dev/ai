@@ -10,16 +10,13 @@ export interface ConnectionAdapter {
    * Connect and return an async iterable of StreamChunks
    * @param messages - The messages to send (UIMessages or ModelMessages)
    * @param data - Additional data to send
+   * @param abortSignal - Optional abort signal for request cancellation
    */
   connect(
     messages: UIMessage[] | ModelMessage[],
-    data?: Record<string, any>
+    data?: Record<string, any>,
+    abortSignal?: AbortSignal
   ): AsyncIterable<StreamChunk>;
-
-  /**
-   * Abort the current connection (optional)
-   */
-  abort?(): void;
 }
 
 /**
@@ -51,12 +48,8 @@ export function fetchServerSentEvents(
   url: string,
   options: FetchConnectionOptions = {}
 ): ConnectionAdapter {
-  let abortController: AbortController | null = null;
-
   return {
-    async *connect(messages, data) {
-      abortController = new AbortController();
-
+    async *connect(messages, data, abortSignal) {
       // Convert UIMessages to ModelMessages if needed
       const modelMessages: ModelMessage[] = [];
       for (const msg of messages) {
@@ -89,7 +82,7 @@ export function fetchServerSentEvents(
         headers: requestHeaders,
         body: JSON.stringify({ messages: modelMessages, data }),
         credentials: options.credentials || "same-origin",
-        signal: options.signal || abortController.signal,
+        signal: abortSignal || options.signal,
       });
 
       if (!response.ok) {
@@ -108,6 +101,11 @@ export function fetchServerSentEvents(
         const decoder = new TextDecoder();
 
         while (true) {
+          // Check if aborted before reading
+          if (abortSignal?.aborted) {
+            break;
+          }
+
           const { done, value } = await reader.read();
           if (done) break;
 
@@ -133,13 +131,6 @@ export function fetchServerSentEvents(
         reader.releaseLock();
       }
     },
-
-    abort() {
-      if (abortController) {
-        abortController.abort();
-        abortController = null;
-      }
-    },
   };
 }
 
@@ -163,12 +154,8 @@ export function fetchHttpStream(
   url: string,
   options: FetchConnectionOptions = {}
 ): ConnectionAdapter {
-  let abortController: AbortController | null = null;
-
   return {
-    async *connect(messages, data) {
-      abortController = new AbortController();
-
+    async *connect(messages, data, abortSignal) {
       // Convert UIMessages to ModelMessages if needed
       const modelMessages: ModelMessage[] = [];
       for (const msg of messages) {
@@ -201,7 +188,7 @@ export function fetchHttpStream(
         headers: requestHeaders,
         body: JSON.stringify({ messages: modelMessages, data }),
         credentials: options.credentials || "same-origin",
-        signal: options.signal || abortController.signal,
+        signal: abortSignal || options.signal,
       });
 
       if (!response.ok) {
@@ -221,6 +208,11 @@ export function fetchHttpStream(
         let buffer = "";
 
         while (true) {
+          // Check if aborted before reading
+          if (abortSignal?.aborted) {
+            break;
+          }
+
           const { done, value } = await reader.read();
           if (done) break;
 
@@ -255,13 +247,6 @@ export function fetchHttpStream(
         reader.releaseLock();
       }
     },
-
-    abort() {
-      if (abortController) {
-        abortController.abort();
-        abortController = null;
-      }
-    },
   };
 }
 
@@ -286,7 +271,7 @@ export function stream(
   ) => AsyncIterable<StreamChunk>
 ): ConnectionAdapter {
   return {
-    async *connect(messages, data) {
+    async *connect(messages, data, abortSignal) {
       // Convert UIMessages to ModelMessages if needed
       const modelMessages: ModelMessage[] = [];
       for (const msg of messages) {
@@ -299,6 +284,8 @@ export function stream(
         }
       }
       
+      // Note: abortSignal is available but streamFactory doesn't accept it
+      // Custom stream factories should handle abort signals themselves
       yield* streamFactory(modelMessages, data);
     },
   };

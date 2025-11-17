@@ -222,6 +222,9 @@ class AI<
       providerOptions,
     } = params;
 
+    // Extract abortSignal from options
+    const { abortSignal, ...restOptions } = options;
+
     const requestId = `chat-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const streamId = `stream-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
@@ -260,6 +263,11 @@ class AI<
 
 
     do {
+      // Check if aborted before starting iteration
+      if (abortSignal?.aborted) {
+        break;
+      }
+
       let accumulatedContent = "";
       let doneChunk = null;
       let chunkCount = 0;
@@ -267,15 +275,20 @@ class AI<
       // Generate a unique messageId for this response/chunk group
       const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
-      // Stream the current iteration
+      // Stream the current iteration, passing abortSignal
       for await (const chunk of this.adapter.chatStream({
         model: model as string,
         messages,
         tools: tools as Tool[] | undefined,
-        ...options,
+        ...restOptions,
+        abortSignal,
         responseFormat: undefined,
         providerOptions: providerOptions as any,
       })) {
+        // Check if aborted during iteration
+        if (abortSignal?.aborted) {
+          break;
+        }
         chunkCount++;
         totalChunkCount++; // Increment total as well
         // Forward all chunks to the caller
@@ -352,6 +365,11 @@ class AI<
           // Emit error event
           return; // Stop on error
         }
+      }
+
+      // Check if aborted before tool execution
+      if (abortSignal?.aborted) {
+        break;
       }
 
       // Check if we need to execute tools
@@ -590,6 +608,9 @@ class AI<
       providerOptions,
     } = params;
 
+    // Extract abortSignal from options
+    const { abortSignal, ...restOptions } = options;
+
     const requestId = `chat-completion-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
 
@@ -618,7 +639,8 @@ class AI<
       model: model as string,
       messages,
       tools: tools as Tool[] | undefined,
-      ...options,
+      ...restOptions,
+      abortSignal,
       responseFormat,
       providerOptions: providerOptions as any,
     });

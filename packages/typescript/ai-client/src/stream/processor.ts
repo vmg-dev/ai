@@ -81,6 +81,7 @@ export class StreamProcessor {
 
   // State
   private textContent: string = "";
+  private lastEmittedContent: string = ""; // Track what we've already emitted
   private toolCalls: Map<string, InternalToolCallState> = new Map(); // Track by ID, not index
   private toolCallOrder: string[] = []; // Track order of tool call IDs
 
@@ -163,12 +164,21 @@ export class StreamProcessor {
     // Text arriving means all current tool calls are complete
     this.completeAllToolCalls();
 
-    // Don't accumulate - the content field already has the full text!
-    // Just store it directly
-    this.textContent = content;
+    // Determine if content is already accumulated (from adapter) or a delta (from test)
+    // Adapters send accumulated content that starts with our current content
+    // Tests may send deltas that need to be accumulated
+    if (content.startsWith(this.textContent)) {
+      // Already accumulated content from adapter - use as-is
+      this.textContent = content;
+    } else {
+      // Delta content - accumulate
+      this.textContent += content;
+    }
 
-    // Always emit - content is already accumulated
-    this.emitTextUpdate();
+    // Check if chunk strategy says we should emit
+    if (this.chunkStrategy.shouldEmit(content, this.textContent)) {
+      this.emitTextUpdate();
+    }
   }
 
   /**
@@ -321,7 +331,11 @@ export class StreamProcessor {
    * Emit pending text update
    */
   private emitTextUpdate(): void {
-    this.handlers.onTextUpdate?.(this.textContent);
+    // Only emit if content has changed
+    if (this.textContent !== this.lastEmittedContent) {
+      this.handlers.onTextUpdate?.(this.textContent);
+      this.lastEmittedContent = this.textContent;
+    }
   }
 
   /**
@@ -363,6 +377,7 @@ export class StreamProcessor {
    */
   private reset(): void {
     this.textContent = "";
+    this.lastEmittedContent = "";
     this.toolCalls.clear();
     this.toolCallOrder = [];
     this.chunkStrategy.reset?.();
