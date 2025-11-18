@@ -14,6 +14,7 @@ import {
   type ImageGenerationResult,
   type ImageData,
 } from "@tanstack/ai";
+import { OPENAI_CHAT_MODELS, OPENAI_IMAGE_MODELS, OPENAI_EMBEDDING_MODELS, OPENAI_AUDIO_MODELS, OPENAI_VIDEO_MODELS, OPENAI_TRANSCRIPTION_MODELS } from "./model-meta";
 
 export interface OpenAIConfig {
   apiKey: string;
@@ -21,101 +22,15 @@ export interface OpenAIConfig {
   baseURL?: string;
 }
 
-// Chat/text completion models (from OpenAI docs - platform.openai.com/docs/models)
-const OPENAI_CHAT_MODELS = [
-  // Frontier models
-  "gpt-5",
-  "gpt-5-mini",
-  "gpt-5-nano",
-  "gpt-5-pro",
-  "gpt-4.1",
-  "gpt-4.1-mini",
-  "gpt-4.1-nano",
-  // Open-weight models
-  "gpt-oss-120b",
-  "gpt-oss-20b",
-  // Reasoning models
-  "o3",
-  "o3-pro",
-  "o3-mini",
-  "o4-mini",
-  "o3-deep-research",
-  "o4-mini-deep-research",
-  // Legacy and previous generation
-  "gpt-4",
-  "gpt-4-turbo",
-  "gpt-4-turbo-preview",
-  "gpt-4o",
-  "gpt-4o-mini",
-  "gpt-3.5-turbo",
-  // Audio-enabled chat models
-  "gpt-audio",
-  "gpt-audio-mini",
-  "gpt-4o-audio-preview",
-  "gpt-4o-mini-audio-preview",
-  // Realtime models
-  "gpt-realtime",
-  "gpt-realtime-mini",
-  "gpt-4o-realtime-preview",
-  "gpt-4o-mini-realtime-preview",
-  // ChatGPT models
-  "gpt-5-chat-latest",
-  "chatgpt-4o-latest",
-  // Specialized
-  "gpt-5-codex",
-  "codex-mini-latest",
-  // Preview models
-  "gpt-4o-search-preview",
-  "gpt-4o-mini-search-preview",
-  "computer-use-preview",
-  // Legacy reasoning (deprecated but still available)
-  "o1",
-  "o1-mini",
-  "o1-preview",
-  // Legacy base models
-  "davinci-002",
-  "babbage-002",
-] as const;
 
-// Image generation models (from OpenAI docs)
-const OPENAI_IMAGE_MODELS = [
-  "gpt-image-1",
-  "gpt-image-1-mini",
-  "dall-e-3",
-  "dall-e-2",
-] as const;
-
-// Embedding models (from OpenAI docs)
-const OPENAI_EMBEDDING_MODELS = [
-  "text-embedding-3-large",
-  "text-embedding-3-small",
-  "text-embedding-ada-002",
-] as const;
-
-// Audio models (transcription and text-to-speech)
-const OPENAI_AUDIO_MODELS = [
-  // Transcription models
-  "whisper-1",
-  "gpt-4o-transcribe",
-  "gpt-4o-mini-transcribe",
-  "gpt-4o-transcribe-diarize",
-  // Text-to-speech models
-  "tts-1",
-  "tts-1-hd",
-  "gpt-4o-mini-tts",
-] as const;
-
-// Video generation models (from OpenAI docs)
-const OPENAI_VIDEO_MODELS = [
-  "sora-2",
-  "sora-2-pro",
-] as const;
 
 export type OpenAIChatModel = (typeof OPENAI_CHAT_MODELS)[number];
 export type OpenAIImageModel = (typeof OPENAI_IMAGE_MODELS)[number];
 export type OpenAIEmbeddingModel = (typeof OPENAI_EMBEDDING_MODELS)[number];
 export type OpenAIAudioModel = (typeof OPENAI_AUDIO_MODELS)[number];
 export type OpenAIVideoModel = (typeof OPENAI_VIDEO_MODELS)[number];
+export type OpenAITranscriptionModel = (typeof OPENAI_TRANSCRIPTION_MODELS)[number];
+
 
 /**
  * OpenAI-specific provider options for chat/text generation
@@ -193,10 +108,10 @@ export interface OpenAIChatProviderOptions {
  * Maps common options to OpenAI-specific format
  * Handles translation of normalized options to OpenAI's API format
  */
-function mapCommonOptionsToOpenAI(
+export function mapCommonOptionsToOpenAI(
   options: ChatCompletionOptions,
   providerOpts?: OpenAIChatProviderOptions
-): any {
+): OpenAIChatProviderOptions {
   const requestParams: any = {
     model: options.model,
     messages: options.messages,
@@ -212,11 +127,6 @@ function mapCommonOptionsToOpenAI(
 
   if (options.metadata) {
     requestParams.metadata = options.metadata;
-  }
-
-  // Map parallel tool calls (common option)
-  if (options.parallelToolCalls !== undefined) {
-    requestParams.parallel_tool_calls = options.parallelToolCalls;
   }
 
   // Map user identifier (common option)
@@ -732,14 +642,14 @@ export class OpenAI extends BaseAdapter<
                 name: toolCall.function?.name || "",
               });
             }
-            
+
             // Find which tool call these deltas belong to
             // For the first chunk, we just added it above
             // For subsequent chunks, we need to find it by OpenAI's index field
             let toolCallId: string;
             let toolCallName: string;
             let actualIndex: number;
-            
+
             if (toolCall.id) {
               // First chunk - use the ID we just tracked
               toolCallId = toolCall.id;
@@ -750,7 +660,7 @@ export class OpenAI extends BaseAdapter<
               // Delta chunk - find by OpenAI's index
               // OpenAI uses index to group deltas for the same tool call
               const openAIIndex = typeof toolCall.index === 'number' ? toolCall.index : 0;
-              
+
               // Find the tool call ID that was assigned this OpenAI index
               const entry = Array.from(toolCallMetadata.entries())[openAIIndex];
               if (entry) {
@@ -765,7 +675,7 @@ export class OpenAI extends BaseAdapter<
                 actualIndex = openAIIndex;
               }
             }
-            
+
             yield {
               type: "tool_call",
               id: chunk.id,
@@ -820,7 +730,7 @@ export class OpenAI extends BaseAdapter<
     options: TextGenerationOptions
   ): Promise<TextGenerationResult> {
     const response = await this.client.completions.create({
-      model: options.model || "gpt-3.5-turbo-instruct",
+      model: options.model,
       prompt: options.prompt,
       max_tokens: options.maxTokens,
       temperature: options.temperature,
