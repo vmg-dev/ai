@@ -25,7 +25,7 @@ class MockAdapter extends BaseAdapter<
     options: ChatCompletionOptions
   ): Promise<any> {
     this.chatCompletionCallCount++;
-    this.receivedAbortSignals.push(options.abortSignal);
+    this.receivedAbortSignals.push(options.request?.signal);
     return {
       id: "test-id",
       model: "test-model",
@@ -38,7 +38,7 @@ class MockAdapter extends BaseAdapter<
     options: ChatCompletionOptions
   ): AsyncIterable<StreamChunk> {
     this.chatStreamCallCount++;
-    this.receivedAbortSignals.push(options.abortSignal);
+    this.receivedAbortSignals.push(options.request?.signal);
 
     // Yield some chunks
     yield {
@@ -87,9 +87,7 @@ describe("AI - Abort Signal Handling", () => {
     const stream = aiInstance.chat({
       model: "test-model",
       messages: [{ role: "user", content: "Hello" }],
-      options: {
-        abortSignal,
-      },
+      abortController, // Pass abortController directly
     });
 
     const chunks: StreamChunk[] = [];
@@ -111,9 +109,7 @@ describe("AI - Abort Signal Handling", () => {
     const stream = aiInstance.chat({
       model: "test-model",
       messages: [{ role: "user", content: "Hello" }],
-      options: {
-        abortSignal,
-      },
+      abortController, // Pass abortController directly
     });
 
     const chunks: StreamChunk[] = [];
@@ -146,9 +142,7 @@ describe("AI - Abort Signal Handling", () => {
     const stream = aiInstance.chat({
       model: "test-model",
       messages: [{ role: "user", content: "Hello" }],
-      options: {
-        abortSignal,
-      },
+      abortController, // Pass abortController directly, not in options
     });
 
     const chunks: StreamChunk[] = [];
@@ -158,6 +152,7 @@ describe("AI - Abort Signal Handling", () => {
 
     // Should not yield any chunks if aborted before start
     expect(chunks.length).toBe(0);
+    expect(mockAdapter.chatStreamCallCount).toBe(0);
   });
 
   it("should propagate abortSignal to adapter.chatCompletion()", async () => {
@@ -170,9 +165,7 @@ describe("AI - Abort Signal Handling", () => {
     await aiInstance.chatCompletion({
       model: "test-model",
       messages: [{ role: "user", content: "Hello" }],
-      options: {
-        abortSignal,
-      },
+      abortController, // Pass abortController directly
     });
 
     expect(mockAdapter.chatCompletionCallCount).toBe(1);
@@ -232,9 +225,7 @@ describe("AI - Abort Signal Handling", () => {
           },
         },
       ],
-      options: {
-        abortSignal,
-      },
+      abortController, // Pass abortController directly
     });
 
     const chunks: StreamChunk[] = [];

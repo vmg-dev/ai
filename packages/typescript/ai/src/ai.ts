@@ -579,6 +579,7 @@ class AI<
       systemPrompts,
       options = {},
       providerOptions,
+      request,
       abortController,
     } = params;
 
