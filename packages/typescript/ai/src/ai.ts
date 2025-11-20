@@ -139,11 +139,10 @@ type ExtractVideoProviderOptions<T> = T extends AIAdapter<
   : Record<string, any>;
 
 // Helper type to compute chatCompletion return type based on output option
-type ChatCompletionReturnType<
-  TOutput extends ResponseFormat<any> | undefined
-> = TOutput extends ResponseFormat<infer TData>
-  ? ChatCompletionResult<TData>
-  : ChatCompletionResult;
+type ChatCompletionReturnType<TOutput extends ResponseFormat<any> | undefined> =
+  TOutput extends ResponseFormat<infer TData>
+    ? ChatCompletionResult<TData>
+    : ChatCompletionResult;
 
 // Config for single adapter
 type AIConfig<
@@ -193,7 +192,12 @@ class AI<
    *   console.log(chunk);
    * }
    */
-  async *chat(params: ChatCompletionOptions<ExtractModels<TAdapter>, ExtractChatProviderOptions<TAdapter>>): AsyncIterable<StreamChunk> {
+  async *chat(
+    params: ChatCompletionOptions<
+      ExtractModels<TAdapter>,
+      ExtractChatProviderOptions<TAdapter>
+    >
+  ): AsyncIterable<StreamChunk> {
     const {
       model,
       messages: inputMessages,
@@ -202,9 +206,14 @@ class AI<
       agentLoopStrategy,
       options = {},
       providerOptions,
-      request
+      abortController,
     } = params;
 
+    // Adapters call this the request controller and signal
+    const effectiveRequest = abortController
+      ? { signal: abortController.signal }
+      : undefined;
+    const effectiveSignal = abortController?.signal;
 
     const requestId = `chat-${Date.now()}-${Math.random()
       .toString(36)
@@ -244,7 +253,7 @@ class AI<
 
     do {
       // Check if aborted before starting iteration
-      if (request?.signal?.aborted) {
+      if (effectiveSignal?.aborted) {
         break;
       }
 
@@ -263,11 +272,11 @@ class AI<
         messages,
         tools: tools as Tool[] | undefined,
         ...options,
-        request,
+        request: effectiveRequest,
         providerOptions: providerOptions as any,
       })) {
         // Check if aborted during iteration
-        if (request?.signal?.aborted) {
+        if (effectiveSignal?.aborted) {
           break;
         }
         chunkCount++;
@@ -348,7 +357,7 @@ class AI<
       }
 
       // Check if aborted before tool execution
-      if (request?.signal?.aborted) {
+      if (effectiveSignal?.aborted) {
         break;
       }
 
@@ -557,7 +566,11 @@ class AI<
   async chatCompletion<
     TOutput extends ResponseFormat<any> | undefined = undefined
   >(
-    params: ChatCompletionOptions<ExtractModels<TAdapter>, ExtractChatProviderOptions<TAdapter>, TOutput>
+    params: ChatCompletionOptions<
+      ExtractModels<TAdapter>,
+      ExtractChatProviderOptions<TAdapter>,
+      TOutput
+    >
   ): Promise<ChatCompletionReturnType<TOutput>> {
     const {
       model,
@@ -566,8 +579,14 @@ class AI<
       systemPrompts,
       options = {},
       providerOptions,
-      request,
+      abortController,
     } = params;
+
+    // Combine abortController with request if both are provided
+    // Adapters expect request?.signal, so we create a request object from abortController if needed
+    const effectiveRequest =
+      request ||
+      (abortController ? { signal: abortController.signal } : undefined);
 
     const requestId = `chat-completion-${Date.now()}-${Math.random()
       .toString(36)
@@ -586,7 +605,6 @@ class AI<
     // Extract output if it exists
     const output = params.output;
 
-
     // Prepend system prompts to messages
     const messages = this.prependSystemPrompts(inputMessages, systemPrompts);
 
@@ -595,7 +613,7 @@ class AI<
       messages,
       tools,
       ...options,
-      request,
+      request: effectiveRequest,
       providerOptions: providerOptions,
     });
 

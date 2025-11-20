@@ -242,6 +242,20 @@ export interface ChatCompletionOptions<
   providerOptions?: TProviderOptions;
   request?: Request | RequestInit;
   output?: TOutput;
+  /**
+   * AbortController for request cancellation.
+   *
+   * Allows you to cancel an in-progress request using an AbortController.
+   * Useful for implementing timeouts or user-initiated cancellations.
+   *
+   * @example
+   * const abortController = new AbortController();
+   * setTimeout(() => abortController.abort(), 5000); // Cancel after 5 seconds
+   * await chat({ ..., abortController });
+   *
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/AbortController
+   */
+  abortController?: AbortController;
 }
 
 export type StreamChunkType =

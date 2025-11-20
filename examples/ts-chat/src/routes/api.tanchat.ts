@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ai, toStreamResponse, maxIterations } from "@tanstack/ai";
 import { openai } from "@tanstack/ai-openai";
-import { ollama } from "@tanstack/ai-ollama";
+// import { ollama } from "@tanstack/ai-ollama";
 import { allTools } from "@/lib/guitar-tools";
 
 const SYSTEM_PROMPT = `You are a helpful assistant for a guitar store.
@@ -32,8 +32,8 @@ export const Route = createFileRoute("/api/tanchat")({
     handlers: {
       POST: async ({ request }) => {
         // Create AI instance with OpenAI adapter
-        // const aiInstance = ai(openai());
-        const aiInstance = ai(ollama());
+        // const aiInstance = ai(ollama());
+        const aiInstance = ai(openai());
 
         // Check for API key
         if (!process.env.OPENAI_API_KEY) {
@@ -49,27 +49,39 @@ export const Route = createFileRoute("/api/tanchat")({
           );
         }
 
+        // Capture request signal before reading body (it may be aborted after body is consumed)
+        const requestSignal = request.signal;
+
+        // If request is already aborted, return early
+        if (requestSignal?.aborted) {
+          return new Response(null, { status: 499 }); // 499 = Client Closed Request
+        }
+
+        const abortController = new AbortController();
+
         const { messages } = await request.json();
 
         try {
-          // Extract abort signal from request for proper cancellation handling
+          // Use the stream abort signal for proper cancellation handling
           const stream = aiInstance.chat({
             messages,
-            // model: "gpt-4o",
-            model: "smollm",
+            model: "gpt-4o",
+            // model: "smollm",
             tools: allTools,
             systemPrompts: [SYSTEM_PROMPT],
             agentLoopStrategy: maxIterations(20),
-            options: {
-              // abortSignal: request.signal, // TBD: figure out why this is not working
-            },
+            abortController,
             providerOptions: {
               store: true,
             },
           });
 
-          return toStreamResponse(stream);
+          return toStreamResponse(stream, undefined, abortController);
         } catch (error: any) {
+          // If request was aborted, return early (don't send error response)
+          if (error.name === "AbortError" || abortController.signal.aborted) {
+            return new Response(null, { status: 499 }); // 499 = Client Closed Request
+          }
           return new Response(
             JSON.stringify({
               error: error.message || "An error occurred",
