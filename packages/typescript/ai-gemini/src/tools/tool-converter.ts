@@ -6,7 +6,7 @@ import { convertGoogleMapsToolToAdapterFormat } from "./google-maps-tool";
 import { convertGoogleSearchRetrievalToolToAdapterFormat } from "./google-search-retriveal-tool";
 import { convertGoogleSearchToolToAdapterFormat } from "./google-search-tool";
 import { convertUrlContextToolToAdapterFormat } from "./url-context-tool";
-import { GoogleGeminiTool } from ".";
+import { ToolUnion } from "@google/genai";
 
 /**
  * Converts standard Tool format to Gemini-specific tool format
@@ -33,35 +33,69 @@ import { GoogleGeminiTool } from ".";
  * ```
  */
 export function convertToolsToProviderFormat<TTool extends Tool>(
-  tools: TTool[],
-): GoogleGeminiTool[] {
-  return tools.map(tool => {
+  tools: TTool[] | undefined,
+): ToolUnion[] {
+  if (!tools || tools.length === 0) {
+    return [];
+  }
+  const result: ToolUnion[] = [];
+  const functionDeclarations: Array<{
+    name: string;
+    description?: string;
+    parameters?: any;
+  }> = [];
+
+  // Process each tool and group function declarations together
+  for (const tool of tools) {
     const name = tool.function.name;
 
     switch (name) {
       case "code_execution":
-        return convertCodeExecutionToolToAdapterFormat(tool);
+        result.push(convertCodeExecutionToolToAdapterFormat(tool));
+        break;
       case "computer_use":
-        return convertComputerUseToolToAdapterFormat(tool);
+        result.push(convertComputerUseToolToAdapterFormat(tool));
+        break;
       case "file_search":
-        return convertFileSearchToolToAdapterFormat(tool);
+        result.push(convertFileSearchToolToAdapterFormat(tool));
+        break;
       case "google_maps":
-        return convertGoogleMapsToolToAdapterFormat(tool);
+        result.push(convertGoogleMapsToolToAdapterFormat(tool));
+        break;
       case "google_search_retrieval":
-        return convertGoogleSearchRetrievalToolToAdapterFormat(tool);
+        result.push(convertGoogleSearchRetrievalToolToAdapterFormat(tool));
+        break;
       case "google_search":
-        return convertGoogleSearchToolToAdapterFormat(tool);
+        result.push(convertGoogleSearchToolToAdapterFormat(tool));
+        break;
       case "url_context":
-        return convertUrlContextToolToAdapterFormat(tool);
+        result.push(convertUrlContextToolToAdapterFormat(tool));
+        break;
       default:
-        // For custom function declarations, return functionDeclarations format
-        return {
-          functionDeclarations: [{
-            name: tool.function.name,
-            description: tool.function.description,
-            parameters: tool.function.parameters
-          }]
-        };
+        // Collect function declarations to group together
+        // Description is required for Gemini function declarations
+        if (!tool.function.description) {
+          throw new Error(`Tool ${tool.function.name} requires a description for Gemini adapter`);
+        }
+        functionDeclarations.push({
+          name: tool.function.name,
+          description: tool.function.description,
+          parameters: tool.function.parameters || {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        });
+        break;
     }
-  });
+  }
+
+  // If we have function declarations, add them as a single tool
+  if (functionDeclarations.length > 0) {
+    result.push({
+      functionDeclarations: functionDeclarations
+    });
+  }
+
+  return result;
 }

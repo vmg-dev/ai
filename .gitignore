@@ -34,6 +34,9 @@ lerna-debug.log*
 coverage/
 .nyc_output/
 
+# Test output
+output/
+
 # Misc
 .cache/
 .temp/
@@ -42,6 +45,7 @@ coverage/
 # Package manager
 .yarn/
 .pnpm-store/
+
 
 # My TODOs. Feel free to ignore this.
 *-TODO.md

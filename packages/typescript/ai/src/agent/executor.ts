@@ -70,7 +70,19 @@ export async function executeToolCalls(
       continue;
     }
 
-    const input = JSON.parse(toolCall.function.arguments);
+    // Parse arguments, throwing error if invalid JSON
+    let input: any = {};
+    const argsStr = toolCall.function.arguments?.trim() || "{}";
+    if (argsStr) {
+      try {
+        input = JSON.parse(argsStr);
+      } catch (parseError) {
+        // If parsing fails, throw error to fail fast
+        throw new Error(
+          `Failed to parse tool arguments as JSON: ${argsStr}`
+        );
+      }
+    }
 
     // CASE 1: Client-side tool (no execute function)
     if (!tool.execute) {
