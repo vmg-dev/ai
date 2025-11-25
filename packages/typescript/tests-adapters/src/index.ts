@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 import {
-  chatCompletion,
-  embed,
+  chat,
+  embedding,
   summarize,
   tool,
   maxIterations,
@@ -29,27 +29,28 @@ const ANTHROPIC_MODEL =
   process.env.ANTHROPIC_MODEL || "claude-3-5-haiku-20241022";
 const ANTHROPIC_SUMMARY_MODEL =
   process.env.ANTHROPIC_SUMMARY_MODEL || ANTHROPIC_MODEL;
-const ANTHROPIC_EMBED_MODEL =
-  process.env.ANTHROPIC_EMBED_MODEL || ANTHROPIC_MODEL;
+const ANTHROPIC_EMBEDDING_MODEL =
+  process.env.ANTHROPIC_EMBEDDING_MODEL || ANTHROPIC_MODEL;
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 const OPENAI_SUMMARY_MODEL = process.env.OPENAI_SUMMARY_MODEL || OPENAI_MODEL;
-const OPENAI_EMBED_MODEL =
-  process.env.OPENAI_EMBED_MODEL || "text-embedding-3-small";
+const OPENAI_EMBEDDING_MODEL =
+  process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small";
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash-lite";
 const GEMINI_SUMMARY_MODEL = process.env.GEMINI_SUMMARY_MODEL || GEMINI_MODEL;
-const GEMINI_EMBED_MODEL =
-  process.env.GEMINI_EMBED_MODEL || "gemini-embedding-001";
+const GEMINI_EMBEDDING_MODEL =
+  process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
 
 // Using llama3.2:3b for better stability with approval flows
 // granite4:3b was flaky with approval-required tools
 // Can override via OLLAMA_MODEL env var if needed
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "mistral:7b";
 const OLLAMA_SUMMARY_MODEL = process.env.OLLAMA_SUMMARY_MODEL || OLLAMA_MODEL;
-const OLLAMA_EMBED_MODEL = process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text";
+const OLLAMA_EMBEDDING_MODEL =
+  process.env.OLLAMA_EMBEDDING_MODEL || "nomic-embed-text";
 
-type TestOutcome = { passed: boolean; error?: string };
+type TestOutcome = { passed: boolean; error?: string; ignored?: boolean };
 
 interface AdapterResult {
   adapter: string;
@@ -329,60 +330,6 @@ async function testApprovalToolFlow(
   return { passed, error: debugData.result.error };
 }
 
-async function testChatCompletion(
-  adapterContext: AdapterContext
-): Promise<TestOutcome> {
-  const testName = "test4-chat-completion";
-  const messages = [
-    { role: "user" as const, content: "What is the capital of France?" },
-  ];
-  const adapterName = adapterContext.adapterName;
-  const debugData: Record<string, any> = {
-    adapter: adapterName,
-    test: testName,
-    model: adapterContext.model,
-    timestamp: new Date().toISOString(),
-    input: { messages },
-  };
-
-  try {
-    const result = await chatCompletion({
-      adapter: adapterContext.adapter,
-      model: adapterContext.model,
-      messages,
-    });
-
-    const content = result.content || "";
-    const hasParis = content.toLowerCase().includes("paris");
-    debugData.summary = {
-      fullResponse: content,
-      finishReason: result.finishReason,
-      usage: result.usage,
-    };
-    debugData.result = {
-      passed: hasParis,
-      error: hasParis ? undefined : "Response does not contain 'Paris'",
-    };
-
-    await writeDebugFile(adapterName, testName, debugData);
-
-    console.log(
-      `[${adapterName}] ${hasParis ? "✅" : "❌"} ${testName}${
-        hasParis ? "" : ": Response does not contain 'Paris'"
-      }`
-    );
-
-    return { passed: hasParis, error: debugData.result.error };
-  } catch (error: any) {
-    const message = error?.message || String(error);
-    debugData.summary = { error: message };
-    debugData.result = { passed: false, error: message };
-    await writeDebugFile(adapterName, testName, debugData);
-    console.log(`[${adapterName}] ❌ ${testName}: ${message}`);
-    return { passed: false, error: message };
-  }
-}
-
 async function testSummarize(
   adapterContext: AdapterContext
 ): Promise<TestOutcome> {
@@ -442,9 +389,18 @@ async function testSummarize(
   }
 }
 
-async function testEmbed(adapterContext: AdapterContext): Promise<TestOutcome> {
-  const testName = "test6-embed";
+async function testEmbedding(
+  adapterContext: AdapterContext
+): Promise<TestOutcome> {
+  const testName = "test6-embedding";
   const adapterName = adapterContext.adapterName;
+
+  // Anthropic embedding is not supported, mark as ignored
+  if (adapterName === "Anthropic") {
+    console.log(`[${adapterName}] ⋯ ${testName}: Ignored (not supported)`);
+    return { passed: true, ignored: true };
+  }
+
   const model = adapterContext.embeddingModel || adapterContext.model;
   const inputs = [
     "The Eiffel Tower is located in Paris.",
@@ -460,7 +416,7 @@ async function testEmbed(adapterContext: AdapterContext): Promise<TestOutcome> {
   };
 
   try {
-    const result = await embed({
+    const result = await embedding({
       adapter: adapterContext.adapter,
       model,
       input: inputs,
@@ -509,9 +465,8 @@ const TEST_DEFINITIONS: TestDefinition[] = [
   { id: "chat-stream", label: "chat (stream)", run: testCapitalOfFrance },
   { id: "tools", label: "tools", run: testTemperatureTool },
   { id: "approval", label: "approval", run: testApprovalToolFlow },
-  { id: "chat-completion", label: "chatCompletion", run: testChatCompletion },
   { id: "summarize", label: "summarize", run: testSummarize },
-  { id: "embed", label: "embed", run: testEmbed },
+  { id: "embedding", label: "embedding", run: testEmbedding },
 ];
 
 function shouldTestAdapter(adapterName: string, filter?: string): boolean {
@@ -526,6 +481,7 @@ function formatGrid(results: AdapterResult[]) {
     ...TEST_DEFINITIONS.map((test) => {
       const outcome = result.tests[test.id];
       if (!outcome) return "—";
+      if (outcome.ignored) return "⋯";
       return outcome.passed ? "✅" : "❌";
     }),
   ]);
@@ -573,7 +529,7 @@ async function runTests(filterAdapter?: string) {
     };
 
     console.log(
-      `\n${config.name} (chat: ${config.chatModel}, summarize: ${config.summarizeModel}, embed: ${config.embeddingModel})`
+      `\n${config.name} (chat: ${config.chatModel}, summarize: ${config.summarizeModel}, embedding: ${config.embeddingModel})`
     );
 
     for (const test of TEST_DEFINITIONS) {
@@ -591,7 +547,7 @@ async function runTests(filterAdapter?: string) {
         name: "Anthropic",
         chatModel: ANTHROPIC_MODEL,
         summarizeModel: ANTHROPIC_SUMMARY_MODEL,
-        embeddingModel: ANTHROPIC_EMBED_MODEL,
+        embeddingModel: ANTHROPIC_EMBEDDING_MODEL,
         adapter: createAnthropic(anthropicApiKey),
       });
     } else {
@@ -607,7 +563,7 @@ async function runTests(filterAdapter?: string) {
         name: "OpenAI",
         chatModel: OPENAI_MODEL,
         summarizeModel: OPENAI_SUMMARY_MODEL,
-        embeddingModel: OPENAI_EMBED_MODEL,
+        embeddingModel: OPENAI_EMBEDDING_MODEL,
         adapter: createOpenAI(openaiApiKey),
       });
     } else {
@@ -624,7 +580,7 @@ async function runTests(filterAdapter?: string) {
         name: "Gemini",
         chatModel: GEMINI_MODEL,
         summarizeModel: GEMINI_SUMMARY_MODEL,
-        embeddingModel: GEMINI_EMBED_MODEL,
+        embeddingModel: GEMINI_EMBEDDING_MODEL,
         adapter: createGemini(geminiApiKey),
       });
     } else {
@@ -640,7 +596,7 @@ async function runTests(filterAdapter?: string) {
       name: "Ollama",
       chatModel: OLLAMA_MODEL,
       summarizeModel: OLLAMA_SUMMARY_MODEL,
-      embeddingModel: OLLAMA_EMBED_MODEL,
+      embeddingModel: OLLAMA_EMBEDDING_MODEL,
       adapter: ollama(),
     });
   }
@@ -660,7 +616,11 @@ async function runTests(filterAdapter?: string) {
   formatGrid(results);
 
   const allPassed = results.every((result) =>
-    TEST_DEFINITIONS.every((test) => result.tests[test.id]?.passed)
+    TEST_DEFINITIONS.every((test) => {
+      const outcome = result.tests[test.id];
+      // Ignored tests don't count as failures
+      return !outcome || outcome.ignored || outcome.passed;
+    })
   );
 
   console.log("\n" + "=".repeat(60));
