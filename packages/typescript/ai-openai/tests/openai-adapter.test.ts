@@ -7,18 +7,8 @@ const createAdapter = () => new OpenAI({ apiKey: 'test-key' })
 const toolArguments = JSON.stringify({ location: 'Berlin' })
 
 const weatherTool: Tool = {
-  type: 'function',
-  function: {
-    name: 'lookup_weather',
-    description: 'Return the forecast for a location',
-    parameters: {
-      type: 'object',
-      properties: {
-        location: { type: 'string' },
-      },
-      required: ['location'],
-    },
-  },
+  name: 'lookup_weather',
+  description: 'Return the forecast for a location',
 }
 
 function createMockChatCompletionsStream(

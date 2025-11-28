@@ -19,12 +19,8 @@ export function convertApplyPatchToolToAdapterFormat(
  */
 export function applyPatchTool(): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'apply_patch',
-      description: 'Apply a patch to modify files',
-      parameters: {},
-    },
+    name: 'apply_patch',
+    description: 'Apply a patch to modify files',
     metadata: {},
   }
 }

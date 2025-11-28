@@ -74,12 +74,8 @@ export function webSearchTool(config: WebSearchTool): Tool {
   validateDomains(config)
   validateUserLocation(config)
   return {
-    type: 'function',
-    function: {
-      name: 'web_search',
-      description: '',
-      parameters: {},
-    },
+    name: 'web_search',
+    description: '',
     metadata: config,
   }
 }

@@ -17,12 +17,8 @@ export function convertCodeExecutionToolToAdapterFormat(
 
 export function codeExecutionTool(config: CodeExecutionTool): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'code_execution',
-      description: '',
-      parameters: {},
-    },
+    name: 'code_execution',
+    description: '',
     metadata: config,
   }
 }

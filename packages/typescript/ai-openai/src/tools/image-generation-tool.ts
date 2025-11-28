@@ -30,12 +30,8 @@ export function imageGenerationTool(
 ): Tool {
   validatePartialImages(toolData.partial_images)
   return {
-    type: 'function',
-    function: {
-      name: 'image_generation',
-      description: 'Generate images based on text descriptions',
-      parameters: {},
-    },
+    name: 'image_generation',
+    description: 'Generate images based on text descriptions',
     metadata: {
       ...toolData,
     },

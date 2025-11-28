@@ -16,12 +16,8 @@ export function convertWebSearchToolToAdapterFormat(tool: Tool): WebSearchTool {
  */
 export function webSearchTool(toolData: WebSearchTool): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'web_search',
-      description: 'Search the web',
-      parameters: {},
-    },
+    name: 'web_search',
+    description: 'Search the web',
     metadata: toolData,
   }
 }

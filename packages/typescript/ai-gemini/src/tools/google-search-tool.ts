@@ -12,12 +12,8 @@ export function convertGoogleSearchToolToAdapterFormat(tool: Tool) {
 
 export function googleSearchTool(config?: GoogleSearchTool): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'google_search',
-      description: '',
-      parameters: {},
-    },
+    name: 'google_search',
+    description: '',
     metadata: config,
   }
 }

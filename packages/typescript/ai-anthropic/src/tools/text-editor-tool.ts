@@ -21,12 +21,8 @@ export function convertTextEditorToolToAdapterFormat(
 
 export function textEditorTool<T extends TextEditorTool>(config: T): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'str_replace_editor',
-      description: '',
-      parameters: {},
-    },
+    name: 'str_replace_editor',
+    description: '',
     metadata: config,
   }
 }

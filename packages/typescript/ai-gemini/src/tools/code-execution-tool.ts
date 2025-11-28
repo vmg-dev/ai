@@ -10,12 +10,8 @@ export function convertCodeExecutionToolToAdapterFormat(_tool: Tool) {
 
 export function codeExecutionTool(): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'code_execution',
-      description: '',
-      parameters: {},
-    },
+    name: 'code_execution',
+    description: '',
     metadata: {},
   }
 }

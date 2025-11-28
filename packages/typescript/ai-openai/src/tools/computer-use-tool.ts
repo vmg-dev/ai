@@ -22,12 +22,8 @@ export function convertComputerUseToolToAdapterFormat(
  */
 export function computerUseTool(toolData: ComputerUseTool): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'computer_use_preview',
-      description: 'Control a virtual computer',
-      parameters: {},
-    },
+    name: 'computer_use_preview',
+    description: 'Control a virtual computer',
     metadata: {
       ...toolData,
     },

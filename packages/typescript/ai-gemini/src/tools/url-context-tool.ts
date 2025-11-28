@@ -10,12 +10,8 @@ export function convertUrlContextToolToAdapterFormat(_tool: Tool) {
 
 export function urlContextTool(): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'url_context',
-      description: '',
-      parameters: {},
-    },
+    name: 'url_context',
+    description: '',
     metadata: {},
   }
 }

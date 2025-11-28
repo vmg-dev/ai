@@ -21,12 +21,8 @@ export function convertCodeInterpreterToolToAdapterFormat(
  */
 export function codeInterpreterTool(container: CodeInterpreterTool): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'code_interpreter',
-      description: 'Execute code in a sandboxed environment',
-      parameters: {},
-    },
+    name: 'code_interpreter',
+    description: 'Execute code in a sandboxed environment',
     metadata: {
       type: 'code_interpreter',
       container,

@@ -19,12 +19,8 @@ export function convertLocalShellToolToAdapterFormat(
  */
 export function localShellTool(): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'local_shell',
-      description: 'Execute local shell commands',
-      parameters: {},
-    },
+    name: 'local_shell',
+    description: 'Execute local shell commands',
     metadata: {},
   }
 }

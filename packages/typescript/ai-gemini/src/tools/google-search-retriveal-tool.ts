@@ -14,12 +14,8 @@ export function googleSearchRetrievalTool(
   config?: GoogleSearchRetrievalTool,
 ): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'google_search_retrieval',
-      description: '',
-      parameters: {},
-    },
+    name: 'google_search_retrieval',
+    description: '',
     metadata: config,
   }
 }

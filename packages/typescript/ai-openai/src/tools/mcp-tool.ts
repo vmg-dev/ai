@@ -34,12 +34,8 @@ export function mcpTool(toolData: Omit<MCPTool, 'type'>): Tool {
   validateMCPtool({ ...toolData, type: 'mcp' })
 
   return {
-    type: 'function',
-    function: {
-      name: 'mcp',
-      description: toolData.server_description || '',
-      parameters: {},
-    },
+    name: 'mcp',
+    description: toolData.server_description || '',
     metadata: toolData,
   }
 }

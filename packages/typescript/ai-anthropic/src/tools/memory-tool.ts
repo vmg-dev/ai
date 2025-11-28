@@ -4,20 +4,17 @@ import type { Tool } from '@tanstack/ai'
 export type MemoryTool = BetaMemoryTool20250818
 
 export function convertMemoryToolToAdapterFormat(tool: Tool): MemoryTool {
-  const metadata = tool.metadata as MemoryTool
-  return metadata
+  const metadata = tool.metadata as Omit<MemoryTool, 'type'>
+  return {
+    type: 'memory_20250818',
+    ...metadata,
+  }
 }
 
-export function memoryTool(cacheControl?: MemoryTool): Tool {
+export function memoryTool(config?: MemoryTool): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'memory',
-      description: '',
-      parameters: {},
-    },
-    metadata: {
-      cacheControl,
-    },
+    name: 'memory',
+    description: '',
+    metadata: config,
   }
 }

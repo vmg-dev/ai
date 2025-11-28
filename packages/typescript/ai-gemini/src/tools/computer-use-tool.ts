@@ -15,12 +15,8 @@ export function convertComputerUseToolToAdapterFormat(tool: Tool) {
 
 export function computerUseTool(config: ComputerUseTool): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'computer_use',
-      description: '',
-      parameters: {},
-    },
+    name: 'computer_use',
+    description: '',
     metadata: {
       environment: config.environment,
       excludedPredefinedFunctions: config.excludedPredefinedFunctions,

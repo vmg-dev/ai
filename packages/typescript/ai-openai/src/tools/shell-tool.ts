@@ -17,12 +17,8 @@ export function convertShellToolToAdapterFormat(_tool: Tool): ShellTool {
  */
 export function shellTool(): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'shell',
-      description: 'Execute shell commands',
-      parameters: {},
-    },
+    name: 'shell',
+    description: 'Execute shell commands',
     metadata: {},
   }
 }

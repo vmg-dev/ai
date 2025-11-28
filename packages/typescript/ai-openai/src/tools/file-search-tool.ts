@@ -33,12 +33,8 @@ export function fileSearchTool(
 ): Tool {
   validateMaxNumResults(toolData.max_num_results)
   return {
-    type: 'function',
-    function: {
-      name: 'file_search',
-      description: 'Search files in vector stores',
-      parameters: {},
-    },
+    name: 'file_search',
+    description: 'Search files in vector stores',
     metadata: {
       ...toolData,
     },

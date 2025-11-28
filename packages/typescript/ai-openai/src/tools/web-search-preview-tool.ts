@@ -22,12 +22,8 @@ export function convertWebSearchPreviewToolToAdapterFormat(
  */
 export function webSearchPreviewTool(toolData: WebSearchPreviewTool): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'web_search_preview',
-      description: 'Search the web (preview version)',
-      parameters: {},
-    },
+    name: 'web_search_preview',
+    description: 'Search the web (preview version)',
     metadata: toolData,
   }
 }

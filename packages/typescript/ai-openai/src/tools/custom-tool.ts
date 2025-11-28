@@ -21,12 +21,8 @@ export function convertCustomToolToAdapterFormat(tool: Tool): CustomTool {
  */
 export function customTool(toolData: CustomTool): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'custom',
-      description: toolData.description || 'A custom tool',
-      parameters: {},
-    },
+    name: 'custom',
+    description: toolData.description || 'A custom tool',
     metadata: {
       ...toolData,
     },

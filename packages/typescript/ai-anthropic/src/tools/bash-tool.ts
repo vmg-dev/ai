@@ -12,12 +12,8 @@ export function convertBashToolToAdapterFormat(tool: Tool): BashTool {
 }
 export function bashTool(config: BashTool): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'bash',
-      description: '',
-      parameters: {},
-    },
+    name: 'bash',
+    description: '',
     metadata: config,
   }
 }

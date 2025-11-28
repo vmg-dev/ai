@@ -12,12 +12,8 @@ export function convertGoogleMapsToolToAdapterFormat(tool: Tool) {
 
 export function googleMapsTool(config?: GoogleMapsTool): Tool {
   return {
-    type: 'function',
-    function: {
-      name: 'google_maps',
-      description: '',
-      parameters: {},
-    },
+    name: 'google_maps',
+    description: '',
     metadata: config,
   }
 }
